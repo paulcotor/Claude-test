@@ -1,0 +1,539 @@
+/* ============== RESET & BASE ============== */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(180deg, #87ceeb 0%, #4a90c2 60%, #1e5a8a 100%);
+  color: #fff;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* ============== SCREENS ============== */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ============== MENU ============== */
+.menu-header {
+  text-align: center;
+  padding: 12px 0 16px;
+}
+
+.menu-header h1 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 44px);
+  text-shadow: 2px 2px 0 #0b3d6b, 4px 4px 8px rgba(0,0,0,0.3);
+  letter-spacing: 1px;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  font-size: clamp(14px, 2vw, 18px);
+  opacity: 0.95;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+}
+
+.menu-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  border: 2px solid transparent;
+  color: #fff;
+  min-height: 44px;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: #ffd54f;
+  color: #5d3a00;
+  border-color: #f57c00;
+}
+
+.tab-panel {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.level-card {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0b3d6b;
+  border-radius: 16px;
+  padding: 14px 8px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #0b3d6b, 0 6px 10px rgba(0,0,0,0.2);
+  transition: transform 0.1s;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+
+.level-card:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #0b3d6b, 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.level-card.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.level-card-num {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.level-card-icon {
+  font-size: 24px;
+}
+
+.level-card-stars {
+  font-size: 14px;
+  letter-spacing: 1px;
+  height: 18px;
+}
+
+.empty-msg {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 18px;
+  opacity: 0.85;
+}
+
+.editor-entry {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.editor-entry p {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+/* ============== BUTTONS ============== */
+.big-btn {
+  padding: 16px 28px;
+  font-size: 22px;
+  font-weight: 700;
+  background: #ffd54f;
+  color: #5d3a00;
+  border-radius: 16px;
+  box-shadow: 0 5px 0 #c9a000, 0 7px 12px rgba(0,0,0,0.25);
+  min-height: 60px;
+  transition: transform 0.08s;
+}
+
+.big-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #c9a000, 0 3px 6px rgba(0,0,0,0.25);
+}
+
+.big-btn.primary {
+  background: linear-gradient(180deg, #ffe082 0%, #ffb300 100%);
+}
+
+.icon-btn {
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ============== GAME ============== */
+.game-header,
+.editor-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 12px;
+  gap: 12px;
+}
+
+.game-title {
+  font-size: 20px;
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+}
+
+.stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.game-footer {
+  padding: 12px 0 8px;
+  display: flex;
+  justify-content: center;
+}
+
+/* ============== GRID ============== */
+.grid-wrap {
+  position: relative;
+  background: linear-gradient(180deg, #f4d28a 0%, #d9a85d 100%);
+  border-radius: 20px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35), inset 0 0 0 4px #8b5a2b;
+}
+
+.grid {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  background: #8b5a2b;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cell {
+  width: var(--cell-size, 60px);
+  height: var(--cell-size, 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cell-size, 60px) * 0.55);
+  position: relative;
+  transition: filter 0.15s;
+}
+
+/* Shore cells (start row + goal row) */
+.cell.shore {
+  background: linear-gradient(180deg, #f4d28a 0%, #e0b46b 100%);
+}
+
+.cell.shore.start-pick {
+  cursor: pointer;
+}
+
+.cell.shore.start-pick::after {
+  content: "👆";
+  font-size: calc(var(--cell-size, 60px) * 0.5);
+  opacity: 0.7;
+  animation: bob 1.2s ease-in-out infinite;
+}
+
+.cell.shore.start-pick.chosen::after {
+  content: "";
+}
+
+.cell.goal {
+  background: linear-gradient(180deg, #f4d28a 0%, #c89e5a 100%);
+}
+
+.cell.goal::after {
+  content: "🏝️";
+  font-size: calc(var(--cell-size, 60px) * 0.7);
+  position: absolute;
+}
+
+/* River cells */
+.cell.river {
+  background: linear-gradient(180deg, #5fb3d9 0%, #3a8db8 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.cell.river::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 10px,
+    rgba(255,255,255,0.15) 10px,
+    rgba(255,255,255,0.15) 12px
+  );
+  animation: waves 3s linear infinite;
+}
+
+.cell.river.strong {
+  background: linear-gradient(180deg, #4a90c2 0%, #1e5a8a 100%);
+}
+
+.cell.river.very-strong {
+  background: linear-gradient(180deg, #6a4d9c 0%, #3d2a6c 100%);
+}
+
+.cell.river.rock {
+  background: linear-gradient(180deg, #8a8a8a 0%, #4d4d4d 100%);
+}
+
+.cell.river.rock::after {
+  content: "🪨";
+  font-size: calc(var(--cell-size, 60px) * 0.65);
+  z-index: 2;
+}
+
+.arrow {
+  font-size: calc(var(--cell-size, 60px) * 0.55);
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  animation: arrow-pulse 1.5s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.arrow.cond {
+  filter: drop-shadow(0 0 4px #ffeb3b);
+}
+
+@keyframes waves {
+  from { background-position: 0 0; }
+  to { background-position: 24px 0; }
+}
+
+@keyframes arrow-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ============== SHIP ============== */
+.ship {
+  position: absolute;
+  width: var(--cell-size, 60px);
+  height: var(--cell-size, 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cell-size, 60px) * 0.7);
+  pointer-events: none;
+  z-index: 10;
+  transition: transform 0.25s ease-in-out;
+  filter: drop-shadow(0 4px 4px rgba(0,0,0,0.4));
+}
+
+.ship.bobbing {
+  animation: bob 1.5s ease-in-out infinite;
+}
+
+.ghost-trail {
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.6;
+}
+
+.ghost-dot {
+  position: absolute;
+  width: calc(var(--cell-size, 60px) * 0.25);
+  height: calc(var(--cell-size, 60px) * 0.25);
+  background: #fff;
+  border-radius: 50%;
+  border: 2px solid #ff5252;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px rgba(255, 82, 82, 0.6);
+}
+
+/* ============== OVERLAY ============== */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fade-in 0.25s;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.overlay-card {
+  background: linear-gradient(180deg, #fff8e1 0%, #ffd54f 100%);
+  color: #5d3a00;
+  border-radius: 24px;
+  padding: 28px 32px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  max-width: 90%;
+  animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pop-in {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.result-emoji {
+  font-size: 64px;
+  margin-bottom: 8px;
+}
+
+.result-title {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+.result-stars {
+  font-size: 36px;
+  margin-bottom: 20px;
+  min-height: 44px;
+  letter-spacing: 4px;
+}
+
+.overlay-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ============== CONFETTI ============== */
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 99;
+  animation: confetti-fall 2.5s linear forwards;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* ============== EDITOR ============== */
+.editor-controls {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0 12px;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.18);
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+
+.control-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ctrl-btn {
+  width: 36px;
+  height: 36px;
+  font-size: 22px;
+  font-weight: 800;
+  background: #ffd54f;
+  color: #5d3a00;
+  border-radius: 10px;
+}
+
+.ctrl-btn:active {
+  transform: scale(0.92);
+}
+
+.ctrl-value {
+  min-width: 24px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.editor-stage .cell {
+  cursor: pointer;
+}
+
+.editor-stage .cell.editable:active {
+  filter: brightness(1.2);
+}
+
+.editor-footer {
+  gap: 12px;
+}

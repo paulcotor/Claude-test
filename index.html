@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b3d6b" />
+  <title>Corabia Piratului</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ============== MENU ============== -->
+    <section id="screen-menu" class="screen active">
+      <header class="menu-header">
+        <h1>⛵ Corabia Piratului</h1>
+        <p class="subtitle">Găsește drumul spre comoară!</p>
+      </header>
+
+      <nav class="menu-tabs">
+        <button class="tab-btn active" data-tab="levels">🗺️ Aventuri</button>
+        <button class="tab-btn" data-tab="custom">⭐ Hărțile mele</button>
+        <button class="tab-btn" data-tab="editor-entry">✏️ Editor</button>
+      </nav>
+
+      <div id="tab-levels" class="tab-panel active">
+        <div id="levels-grid" class="levels-grid"></div>
+      </div>
+
+      <div id="tab-custom" class="tab-panel">
+        <div id="custom-grid" class="levels-grid"></div>
+        <p id="custom-empty" class="empty-msg">Nu ai hărți încă. Folosește editorul pentru a crea una!</p>
+      </div>
+
+      <div id="tab-editor-entry" class="tab-panel">
+        <div class="editor-entry">
+          <p>Construiește propria ta hartă pentru tata!</p>
+          <button id="btn-new-level" class="big-btn primary">✏️ Hartă nouă</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== GAME ============== -->
+    <section id="screen-game" class="screen">
+      <header class="game-header">
+        <button id="btn-back-from-game" class="icon-btn" aria-label="Înapoi">⬅️</button>
+        <span id="game-title" class="game-title"></span>
+        <button id="btn-retry" class="icon-btn" aria-label="Reîncearcă">🔄</button>
+      </header>
+
+      <div id="game-stage" class="stage"></div>
+
+      <footer class="game-footer">
+        <button id="btn-launch" class="big-btn primary">🚀 PORNEȘTE</button>
+      </footer>
+
+      <div id="overlay-result" class="overlay hidden">
+        <div class="overlay-card">
+          <div id="result-emoji" class="result-emoji">🎉</div>
+          <div id="result-title" class="result-title">BRAVO!</div>
+          <div id="result-stars" class="result-stars"></div>
+          <div class="overlay-buttons">
+            <button id="btn-result-retry" class="big-btn">🔄 Din nou</button>
+            <button id="btn-result-next" class="big-btn primary">▶️ Următor</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== EDITOR ============== -->
+    <section id="screen-editor" class="screen">
+      <header class="game-header">
+        <button id="btn-back-from-editor" class="icon-btn" aria-label="Înapoi">⬅️</button>
+        <span class="game-title">Editor</span>
+        <button id="btn-test-editor" class="icon-btn" aria-label="Testează">▶️</button>
+      </header>
+
+      <div class="editor-controls">
+        <div class="control-group">
+          <span class="control-label">Lățime</span>
+          <button class="ctrl-btn" data-ctrl="cols-minus">−</button>
+          <span id="ctrl-cols" class="ctrl-value">5</span>
+          <button class="ctrl-btn" data-ctrl="cols-plus">+</button>
+        </div>
+        <div class="control-group">
+          <span class="control-label">Râuri</span>
+          <button class="ctrl-btn" data-ctrl="rivers-minus">−</button>
+          <span id="ctrl-rivers" class="ctrl-value">3</span>
+          <button class="ctrl-btn" data-ctrl="rivers-plus">+</button>
+        </div>
+      </div>
+
+      <div id="editor-stage" class="stage editor-stage"></div>
+
+      <footer class="game-footer editor-footer">
+        <button id="btn-editor-save" class="big-btn primary">💾 SALVEAZĂ</button>
+      </footer>
+    </section>
+
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

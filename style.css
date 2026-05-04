@@ -362,6 +362,17 @@ button {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  letter-spacing: 1px;
+}
+
+.cell.river.strong .arrow {
+  font-size: calc(var(--cell-size, 60px) * 0.40);
+  letter-spacing: 2px;
+}
+
+.cell.river.very-strong .arrow {
+  font-size: calc(var(--cell-size, 60px) * 0.30);
+  letter-spacing: 2px;
 }
 
 .arrow.cond {

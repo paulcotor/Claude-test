@@ -22,6 +22,7 @@ import {
   adjustRivers,
   trySaveLevel,
   buildLevelFromState,
+  autoFix,
 } from './editor.js';
 import * as audio from './audio.js';
 
@@ -351,12 +352,27 @@ document.getElementById('btn-editor-save').addEventListener('pointerdown', () =>
   audio.playClick();
   const result = trySaveLevel(editorState);
   if (!result.ok) {
-    alert('🤔 Harta asta nu are nicio soluție! Modifică curenții.');
+    alert('🤔 Harta asta nu are nicio soluție! Apasă 🔧 REPARĂ ca să mut insula într-un loc bun.');
     return;
   }
   alert('💾 Salvat! Găsești harta în "Hărțile mele".');
   showScreen('menu');
   switchTab('custom');
+});
+
+document.getElementById('btn-editor-fix').addEventListener('pointerdown', () => {
+  audio.playClick();
+  const result = autoFix(editorState);
+  if (result.reason === 'already-solvable') {
+    alert('✅ Harta e deja bună! Are cel puțin o soluție.');
+    return;
+  }
+  if (result.reason === 'no-paths') {
+    alert('😬 Toate căile se izbesc de pietre. Scoate niște pietre, apoi încearcă din nou.');
+    return;
+  }
+  alert(`🔧 Am mutat insula 🏝️ pe coloana ${result.newGoal + 1} ca să existe o soluție.`);
+  renderEditorView();
 });
 
 function switchTab(tab) {

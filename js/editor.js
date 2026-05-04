@@ -1,5 +1,5 @@
 import { mountStage } from './render.js';
-import { findSolutions } from './game.js';
+import { findSolutions, simulate } from './game.js';
 import { saveCustomLevel, newCustomId } from './storage.js';
 
 const CYCLE = ['>', '<', '=', '>>', '<<', 'rock'];
@@ -73,7 +73,7 @@ export function renderEditor(stage, state, onChange) {
       const cur = state.rivers[riverIdx].cells[col];
       state.rivers[riverIdx].cells[col] = nextCode(cur);
       onChange();
-    } else if (role === 'goal') {
+    } else if (role === 'goal' || role === 'goal-blocked') {
       state.goalCol = col;
       onChange();
     }
@@ -90,4 +90,40 @@ export function trySaveLevel(state) {
   }
   saveCustomLevel(level);
   return { ok: true, level };
+}
+
+// Find every column the ship can actually reach on the goal shore (regardless
+// of whether it matches goalCol). Returns an array of distinct columns.
+function findReachableLandings(level) {
+  const reachable = new Set();
+  for (let c = 0; c < level.cols; c++) {
+    const result = simulate(level, c);
+    const last = result.path[result.path.length - 1];
+    if (last.row === level.rivers.length + 1) {
+      reachable.add(last.col);
+    }
+  }
+  return [...reachable];
+}
+
+// If the level has no solution, move goalCol to the nearest reachable landing.
+// Returns one of:
+//   { fixed: true, oldGoal, newGoal }
+//   { fixed: false, reason: 'already-solvable' }
+//   { fixed: false, reason: 'no-paths' } — every start crashes; need to remove rocks
+export function autoFix(state) {
+  const level = buildLevelFromState(state);
+  if (findSolutions(level).length > 0) {
+    return { fixed: false, reason: 'already-solvable' };
+  }
+  const reachable = findReachableLandings(level);
+  if (reachable.length === 0) {
+    return { fixed: false, reason: 'no-paths' };
+  }
+  const oldGoal = state.goalCol;
+  const newGoal = reachable.reduce((best, c) =>
+    Math.abs(c - oldGoal) < Math.abs(best - oldGoal) ? c : best
+  );
+  state.goalCol = newGoal;
+  return { fixed: true, oldGoal, newGoal };
 }

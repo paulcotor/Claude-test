@@ -282,6 +282,7 @@ button {
   font-size: calc(var(--cell-size, 60px) * 0.5);
   opacity: 0.7;
   animation: bob 1.2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .cell.shore.start-pick.chosen::after {
@@ -296,6 +297,19 @@ button {
   content: "🏝️";
   font-size: calc(var(--cell-size, 60px) * 0.7);
   position: absolute;
+  pointer-events: none;
+}
+
+.cell.shore.goal-blocked {
+  background: linear-gradient(180deg, #8a8a8a 0%, #4d4d4d 100%);
+  position: relative;
+}
+
+.cell.shore.goal-blocked::after {
+  content: "🪨";
+  font-size: calc(var(--cell-size, 60px) * 0.65);
+  position: absolute;
+  pointer-events: none;
 }
 
 /* River cells */
@@ -335,6 +349,7 @@ button {
   content: "🪨";
   font-size: calc(var(--cell-size, 60px) * 0.65);
   z-index: 2;
+  pointer-events: none;
 }
 
 .arrow {
@@ -359,8 +374,8 @@ button {
 }
 
 @keyframes arrow-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
 }
 
 @keyframes bob {
@@ -379,8 +394,12 @@ button {
   font-size: calc(var(--cell-size, 60px) * 0.7);
   pointer-events: none;
   z-index: 10;
-  transition: transform 0.25s ease-in-out;
+  transition: transform 0.28s ease-in-out;
   filter: drop-shadow(0 4px 4px rgba(0,0,0,0.4));
+}
+
+.ship.no-transition {
+  transition: none;
 }
 
 .ship.bobbing {

@@ -47,7 +47,7 @@ export function simulate(level, startCol) {
   if (col === level.goalCol) {
     return { success: true, reason: 'goal', path };
   }
-  return { success: false, reason: 'overboard', path };
+  return { success: false, reason: 'wreck', path };
 }
 
 // Find ALL starting columns that lead to the goal. Used to verify levels are

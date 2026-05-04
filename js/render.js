@@ -3,13 +3,13 @@ const MIN_CELL = 40;
 const MAX_CELL = 84;
 
 const ARROW_GLYPHS = {
-  '>': '➤',
-  '<': '➤',
-  '>>': '➤➤',
-  '<<': '➤➤',
-  '>>>': '➤➤➤',
-  '<<<': '➤➤➤',
-  '=': '·',
+  '>':   '▶',
+  '<':   '◀',
+  '>>':  '▶▶',
+  '<<':  '◀◀',
+  '>>>': '▶▶▶',
+  '<<<': '◀◀◀',
+  '=':   '',
 };
 
 function cellClass(code) {
@@ -20,12 +20,12 @@ function cellClass(code) {
 }
 
 function arrowEl(code) {
-  if (code === 'rock' || code === '=') return code === '=' ? '' : '';
+  if (code === 'rock' || code === '=') return null;
+  const glyph = ARROW_GLYPHS[code];
+  if (!glyph) return null;
   const span = document.createElement('span');
   span.className = 'arrow';
-  const isLeft = code.startsWith('<');
-  span.style.transform = isLeft ? 'scaleX(-1)' : '';
-  span.textContent = ARROW_GLYPHS[code] || '';
+  span.textContent = glyph;
   return span;
 }
 
@@ -70,10 +70,14 @@ export function mountStage(stage, level, opts = {}) {
         cell.dataset.role = 'start';
         cell.dataset.col = c;
       } else if (r === rows - 1) {
-        // Goal shore
-        cell.className = 'cell shore';
-        if (c === level.goalCol) cell.classList.add('goal');
-        cell.dataset.role = 'goal';
+        // Goal shore — only goalCol is the safe landing; everything else shows a rock
+        if (c === level.goalCol) {
+          cell.className = 'cell shore goal';
+          cell.dataset.role = 'goal';
+        } else {
+          cell.className = 'cell shore goal-blocked';
+          cell.dataset.role = 'goal-blocked';
+        }
         cell.dataset.col = c;
       } else {
         const riverIdx = r - 1;
@@ -96,7 +100,7 @@ export function mountStage(stage, level, opts = {}) {
 
   // Ship element
   const ship = document.createElement('div');
-  ship.className = 'ship bobbing';
+  ship.className = 'ship no-transition';
   ship.textContent = '⛵';
   ship.style.position = 'absolute';
   ship.style.left = '0';
@@ -116,7 +120,14 @@ export function mountStage(stage, level, opts = {}) {
     cols,
     rows,
     setShipPos(col, row, animate = true) {
-      ship.style.transition = animate ? 'transform 0.28s ease-in-out' : 'none';
+      if (animate) {
+        ship.classList.remove('no-transition');
+      } else {
+        ship.classList.add('no-transition');
+        // Force reflow so the browser applies "no transition" before the new transform.
+        // Without this, iOS Safari may skip the next animated move.
+        void ship.offsetHeight;
+      }
       const x = col * (cellSize + GAP);
       const y = row * (cellSize + GAP);
       ship.style.transform = `translate(${x}px, ${y}px)`;

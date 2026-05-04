@@ -1,5 +1,6 @@
 const PROGRESS_KEY = 'pirat-progress-v1';
 const CUSTOM_KEY = 'pirat-custom-v1';
+const MARATHON_KEY = 'pirat-marathon-v1';
 
 function readJSON(key, fallback) {
   try {
@@ -63,4 +64,23 @@ export function deleteCustomLevel(id) {
 
 export function newCustomId() {
   return 'custom-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+}
+
+export function getMarathon() {
+  return readJSON(MARATHON_KEY, { current: 1, best: 0 });
+}
+
+export function setMarathonCurrent(n) {
+  const m = getMarathon();
+  m.current = n;
+  if (n > m.best) m.best = n;
+  writeJSON(MARATHON_KEY, m);
+  return m;
+}
+
+export function resetMarathon() {
+  const m = getMarathon();
+  m.current = 1;
+  writeJSON(MARATHON_KEY, m);
+  return m;
 }

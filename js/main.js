@@ -1,5 +1,6 @@
 import { LEVELS } from './levels.js';
 import { simulate, findSolutions } from './game.js';
+import { generateLevel } from './generator.js';
 import {
   mountStage,
   drawGhostTrail,
@@ -14,6 +15,9 @@ import {
   isUnlocked,
   getCustomLevels,
   deleteCustomLevel,
+  getMarathon,
+  setMarathonCurrent,
+  resetMarathon,
 } from './storage.js';
 import {
   createEditorState,
@@ -26,13 +30,21 @@ import {
 } from './editor.js';
 import * as audio from './audio.js';
 
+// ============== Append generated levels 13-30 to the hand-designed 1-12 ==============
+// Use a deterministic seed offset (1000) so generated levels don't collide with
+// what the marathon mode produces from level 1 onwards.
+for (let n = 13; n <= 30; n++) {
+  const lvl = generateLevel(1000 + n);
+  lvl.id = `lvl-${String(n).padStart(2, '0')}`;
+  lvl.name = String(n);
+  LEVELS.push(lvl);
+}
+
 // ============== Verify all built-in levels are solvable ==============
 LEVELS.forEach(lvl => {
   const sols = findSolutions(lvl);
   if (sols.length === 0) {
     console.error(`Level ${lvl.id} has no solution!`);
-  } else {
-    console.log(`Level ${lvl.id}: solutions at columns`, sols);
   }
 });
 
@@ -75,7 +87,7 @@ function buildLevelsTab() {
     card.appendChild(starsEl);
 
     if (unlocked) {
-      card.addEventListener('pointerdown', () => {
+      card.addEventListener('click', () => {
         audio.unlockAudio();
         audio.playClick();
         startLevel(lvl);
@@ -118,25 +130,35 @@ function buildCustomTab() {
 
     let pressTimer = null;
     let longPressed = false;
+    let pressedInside = false;
     card.addEventListener('pointerdown', () => {
       audio.unlockAudio();
       longPressed = false;
+      pressedInside = true;
       pressTimer = setTimeout(() => {
         longPressed = true;
+        pressedInside = false;
         if (confirm('Ștergi această hartă?')) {
           deleteCustomLevel(lvl.id);
           buildCustomTab();
         }
       }, 1200);
     });
-    card.addEventListener('pointerup', () => {
+    card.addEventListener('pointerleave', () => {
+      clearTimeout(pressTimer);
+      pressedInside = false;
+    });
+    card.addEventListener('pointercancel', () => {
+      clearTimeout(pressTimer);
+      pressedInside = false;
+    });
+    card.addEventListener('click', () => {
       clearTimeout(pressTimer);
       if (!longPressed) {
         audio.playClick();
         startLevel(lvl);
       }
     });
-    card.addEventListener('pointerleave', () => clearTimeout(pressTimer));
 
     grid.appendChild(card);
   });
@@ -144,21 +166,15 @@ function buildCustomTab() {
 
 // Tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('pointerdown', () => {
+  btn.addEventListener('click', () => {
     audio.unlockAudio();
     audio.playClick();
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    const tab = btn.dataset.tab;
-    document.getElementById('tab-' + tab).classList.add('active');
-    if (tab === 'custom') buildCustomTab();
-    if (tab === 'levels') buildLevelsTab();
+    switchTab(btn.dataset.tab);
   });
 });
 
 // Editor entry
-document.getElementById('btn-new-level').addEventListener('pointerdown', () => {
+document.getElementById('btn-new-level').addEventListener('click', () => {
   audio.unlockAudio();
   audio.playClick();
   openEditor();
@@ -204,14 +220,16 @@ function mountGame() {
   });
 }
 
-document.getElementById('btn-back-from-game').addEventListener('pointerdown', () => {
+document.getElementById('btn-back-from-game').addEventListener('click', () => {
   audio.playClick();
+  marathonRunning = false;
   showScreen('menu');
   buildLevelsTab();
   buildCustomTab();
+  refreshMarathonTab();
 });
 
-document.getElementById('btn-retry').addEventListener('pointerdown', () => {
+document.getElementById('btn-retry').addEventListener('click', () => {
   if (isAnimating) return;
   audio.playClick();
   resetRun();
@@ -226,7 +244,7 @@ function resetRun() {
   chosenStart = null;
 }
 
-document.getElementById('btn-launch').addEventListener('pointerdown', async () => {
+document.getElementById('btn-launch').addEventListener('click', async () => {
   if (isAnimating) return;
   if (chosenStart == null) {
     audio.playClick();
@@ -274,15 +292,25 @@ function showResult(result) {
   const nextBtn = document.getElementById('btn-result-next');
 
   if (result.success) {
-    const stars = recordResult(currentLevel.id, attempts);
+    let stars;
+    if (marathonRunning) {
+      setMarathonCurrent(marathonLevelNum + 1);
+      stars = 3;
+    } else {
+      stars = recordResult(currentLevel.id, attempts);
+    }
     emoji.textContent = '🎉';
     title.textContent = 'BRAVO!';
     starsEl.textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
     audio.playVictory();
     spawnConfetti(document.getElementById('screen-game'), 50);
 
-    const nextLvl = LEVELS[currentLevelIndex + 1];
-    nextBtn.style.display = nextLvl ? '' : 'none';
+    if (marathonRunning) {
+      nextBtn.style.display = '';
+    } else {
+      const nextLvl = LEVELS[currentLevelIndex + 1];
+      nextBtn.style.display = nextLvl ? '' : 'none';
+    }
   } else {
     emoji.textContent = result.reason === 'wreck' ? '🪨' : '🌊';
     title.textContent = result.reason === 'wreck' ? 'BUF!' : 'PLOUF!';
@@ -293,13 +321,17 @@ function showResult(result) {
   overlay.classList.remove('hidden');
 }
 
-document.getElementById('btn-result-retry').addEventListener('pointerdown', () => {
+document.getElementById('btn-result-retry').addEventListener('click', () => {
   audio.playClick();
   resetRun();
 });
 
-document.getElementById('btn-result-next').addEventListener('pointerdown', () => {
+document.getElementById('btn-result-next').addEventListener('click', () => {
   audio.playClick();
+  if (marathonRunning) {
+    onMarathonResultNext();
+    return;
+  }
   const nextLvl = LEVELS[currentLevelIndex + 1];
   if (nextLvl) startLevel(nextLvl);
 });
@@ -321,14 +353,14 @@ function renderEditorView() {
   editorHandle = renderEditor(stage, editorState, () => renderEditorView());
 }
 
-document.getElementById('btn-back-from-editor').addEventListener('pointerdown', () => {
+document.getElementById('btn-back-from-editor').addEventListener('click', () => {
   audio.playClick();
   showScreen('menu');
   buildCustomTab();
 });
 
 document.querySelectorAll('[data-ctrl]').forEach(btn => {
-  btn.addEventListener('pointerdown', () => {
+  btn.addEventListener('click', () => {
     audio.playClick();
     const ctrl = btn.dataset.ctrl;
     if (ctrl === 'cols-plus') adjustCols(editorState, +1);
@@ -339,7 +371,7 @@ document.querySelectorAll('[data-ctrl]').forEach(btn => {
   });
 });
 
-document.getElementById('btn-test-editor').addEventListener('pointerdown', () => {
+document.getElementById('btn-test-editor').addEventListener('click', () => {
   audio.playClick();
   const testLevel = buildLevelFromState(editorState);
   testLevel.id = 'editor-preview';
@@ -348,7 +380,7 @@ document.getElementById('btn-test-editor').addEventListener('pointerdown', () =>
   startLevel(testLevel);
 });
 
-document.getElementById('btn-editor-save').addEventListener('pointerdown', () => {
+document.getElementById('btn-editor-save').addEventListener('click', () => {
   audio.playClick();
   const result = trySaveLevel(editorState);
   if (!result.ok) {
@@ -360,7 +392,7 @@ document.getElementById('btn-editor-save').addEventListener('pointerdown', () =>
   switchTab('custom');
 });
 
-document.getElementById('btn-editor-fix').addEventListener('pointerdown', () => {
+document.getElementById('btn-editor-fix').addEventListener('click', () => {
   audio.playClick();
   const result = autoFix(editorState);
   if (result.reason === 'already-solvable') {
@@ -382,11 +414,55 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   if (tab === 'custom') buildCustomTab();
   if (tab === 'levels') buildLevelsTab();
+  if (tab === 'marathon') refreshMarathonTab();
 }
+
+// ============== Marathon mode ==============
+let marathonRunning = false;
+let marathonLevelNum = 0;
+
+function refreshMarathonTab() {
+  const m = getMarathon();
+  document.getElementById('marathon-best').textContent = m.best > 0 ? m.best : '—';
+  document.getElementById('marathon-current').textContent = m.current;
+}
+
+function startMarathonLevel(n) {
+  marathonRunning = true;
+  marathonLevelNum = n;
+  const lvl = generateLevel(n);
+  lvl.id = `marathon-${n}`;
+  lvl.name = String(n);
+  lvl.custom = false;
+  startLevel(lvl);
+  // Override title for clarity
+  document.getElementById('game-title').textContent = `🏆 Maraton ${n}`;
+}
+
+function onMarathonResultNext() {
+  // After a marathon win, advance to next level
+  startMarathonLevel(marathonLevelNum + 1);
+}
+
+document.getElementById('btn-marathon-play').addEventListener('click', () => {
+  audio.unlockAudio();
+  audio.playClick();
+  const m = getMarathon();
+  startMarathonLevel(m.current);
+});
+
+document.getElementById('btn-marathon-reset').addEventListener('click', () => {
+  audio.playClick();
+  if (confirm('Reîncepi maratonul de la nivelul 1?')) {
+    resetMarathon();
+    refreshMarathonTab();
+  }
+});
 
 // ============== Init ==============
 buildLevelsTab();
 buildCustomTab();
+refreshMarathonTab();
 
 // Resize handling — re-mount stages on orientation change
 window.addEventListener('resize', () => {

@@ -19,12 +19,25 @@
 
       <nav class="menu-tabs">
         <button class="tab-btn active" data-tab="levels">🗺️ Aventuri</button>
+        <button class="tab-btn" data-tab="marathon">🏆 Maraton</button>
         <button class="tab-btn" data-tab="custom">⭐ Hărțile mele</button>
         <button class="tab-btn" data-tab="editor-entry">✏️ Editor</button>
       </nav>
 
       <div id="tab-levels" class="tab-panel active">
         <div id="levels-grid" class="levels-grid"></div>
+      </div>
+
+      <div id="tab-marathon" class="tab-panel">
+        <div class="marathon-card">
+          <div class="marathon-emoji">🏆</div>
+          <div class="marathon-stats">
+            <div class="marathon-stat-row">Cel mai departe: <strong id="marathon-best">—</strong></div>
+            <div class="marathon-stat-row">Următorul nivel: <strong id="marathon-current">1</strong></div>
+          </div>
+          <button id="btn-marathon-play" class="big-btn primary">🚀 JOACĂ</button>
+          <button id="btn-marathon-reset" class="big-btn">↻ De la 1</button>
+        </div>
       </div>
 
       <div id="tab-custom" class="tab-panel">

@@ -603,3 +603,66 @@ button {
 .editor-footer {
   gap: 12px;
 }
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0 10px;
+}
+
+.tool-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  transition: transform 0.08s;
+}
+
+.tool-btn .tool-glyph {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.tool-btn[data-tool=">>"] .tool-glyph,
+.tool-btn[data-tool="<<"] .tool-glyph {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.tool-btn[data-tool=">>>"] .tool-glyph,
+.tool-btn[data-tool="<<<"] .tool-glyph {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.tool-btn[data-tool="rock"] .tool-glyph {
+  font-size: 22px;
+}
+
+.tool-btn[data-tool="="] .tool-glyph {
+  font-size: 28px;
+  opacity: 0.7;
+}
+
+.tool-btn.selected {
+  background: #ffd54f;
+  color: #5d3a00;
+  border-color: #f57c00;
+  box-shadow: 0 0 0 2px rgba(255,213,79,0.4);
+}
+
+.tool-btn:active {
+  transform: scale(0.92);
+}

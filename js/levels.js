@@ -7,7 +7,6 @@
 //   '⬆'                  pushes ship 1 extra row forward (skips a river)
 //   '⬇'                  pulls ship 1 row back (toward start shore)
 //   'rock'                blocked cell (landing here = wreck)
-//   'buoy'                safe spot — current is ignored on this cell
 //   'whirl-A' .. 'whirl-D' paired teleporters; same letter = same pair
 //
 // Each level may also carry:
@@ -206,8 +205,10 @@ export const LEVELS = [
 ];
 
 // dx = horizontal push, dy = EXTRA vertical push beyond the natural +1 row step.
-// `dy: +1` means the ship skips one river forward.
-// `dy: -1` means the ship is pulled back, possibly creating a cycle.
+// `dy: -1` (↗ ↖ ⬆) cancels the forward step — the ship hovers / drifts back.
+// `dy: +1` (↘ ↙ ⬇) adds an extra forward step — the ship skips one river.
+// Glyph orientation matches user expectation: ↗ visually points up-right,
+// where "up" on screen = toward the start shore = backward in row terms.
 export const PUSH_DELTA = {
   '>':   { dx: +1, dy: 0 },
   '<':   { dx: -1, dy: 0 },
@@ -216,12 +217,12 @@ export const PUSH_DELTA = {
   '<<':  { dx: -2, dy: 0 },
   '>>>': { dx: +3, dy: 0 },
   '<<<': { dx: -3, dy: 0 },
-  '↗':   { dx: +1, dy: +1 },
-  '↖':   { dx: -1, dy: +1 },
-  '⬆':   { dx: 0,  dy: +1 },
-  '↘':   { dx: +1, dy: -1 },
-  '↙':   { dx: -1, dy: -1 },
-  '⬇':   { dx: 0,  dy: -1 },
+  '↗':   { dx: +1, dy: -1 },
+  '↖':   { dx: -1, dy: -1 },
+  '⬆':   { dx: 0,  dy: -1 },
+  '↘':   { dx: +1, dy: +1 },
+  '↙':   { dx: -1, dy: +1 },
+  '⬇':   { dx: 0,  dy: +1 },
 };
 
 export function isWhirlpool(code) {

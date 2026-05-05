@@ -4,12 +4,12 @@ import { saveCustomLevel, newCustomId } from './storage.js';
 import { isWhirlpool } from './levels.js';
 
 // Tools fall in three categories:
-//   PAINT_TOOLS   — replace the cell content (currents, rock, buoy, whirlpool)
+//   PAINT_TOOLS   — replace the cell content (currents, rock, whirlpool)
 //   TOGGLE_TOOLS  — toggle decoration on/off (coin, checkpoint)
 const PAINT_TOOLS = [
   '>', '<', '=', '>>', '<<', '>>>', '<<<',
   '↗', '↖', '↘', '↙', '⬆', '⬇',
-  'rock', 'buoy',
+  'rock',
   'whirl-A', 'whirl-B', 'whirl-C', 'whirl-D',
 ];
 const TOGGLE_TOOLS = ['coin', 'checkpoint'];

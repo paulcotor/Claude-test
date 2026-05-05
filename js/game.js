@@ -140,9 +140,6 @@ export function simulate(level, startCol) {
       continue;
     }
 
-    // Buoy: safe spot, current ignored.
-    if (cell === 'buoy') continue;
-
     // Apply current vector.
     const delta = PUSH_DELTA[cell];
     if (!delta || (delta.dx === 0 && delta.dy === 0)) continue;
@@ -154,6 +151,7 @@ export function simulate(level, startCol) {
     const sy = Math.sign(delta.dy);
     const steps2D = Math.max(totalX, totalY);
 
+    let teleported = false;
     for (let s = 0; s < steps2D; s++) {
       if (s < totalX) col += sx;
       if (s < totalY) row += sy;
@@ -187,12 +185,23 @@ export function simulate(level, startCol) {
       // Mid-river checks
       if (row >= 1 && row <= level.rivers.length) {
         pickup(row, col);
-        const newCell = cellAt(level, row, col);
-        if (newCell === 'rock') return result(false, 'wreck');
-        // Note: we do NOT chain currents from cells we're pushed through —
-        // only the cell we land on at the start of a turn applies its current.
+        const midCell = cellAt(level, row, col);
+        if (midCell === 'rock') return result(false, 'wreck');
+        // Whirlpool also fires when the ship is pushed THROUGH it.
+        if (isWhirlpool(midCell)) {
+          const dest = teleportTarget(pairs, row - 1, col);
+          if (dest) {
+            col = dest.c;
+            row = dest.r + 1;
+            path.push({ col, row, kind: 'teleport' });
+            pickup(row, col);
+            teleported = true;
+            break;
+          }
+        }
       }
     }
+    if (teleported) continue;
   }
 
   if (col === level.goalCol && row === goalRow) {

@@ -402,10 +402,6 @@ button {
   background: linear-gradient(180deg, #4dd0e1 0%, #00838f 100%);
 }
 
-.cell.river.buoy {
-  background: linear-gradient(180deg, #fff59d 0%, #f9a825 100%);
-}
-
 .cell.river.whirl {
   background: radial-gradient(circle at 50% 50%, #1a237e, #0d47a1 70%);
 }
@@ -420,12 +416,6 @@ button {
   z-index: 2;
   pointer-events: none;
   animation: spin 2s linear infinite;
-}
-
-.buoy-glyph {
-  font-size: calc(var(--cell-size, 60px) * 0.6);
-  z-index: 2;
-  pointer-events: none;
 }
 
 .coin-glyph {
@@ -774,7 +764,6 @@ button {
   font-size: 22px;
 }
 
-.tool-btn[data-tool="buoy"] .tool-glyph,
 .tool-btn[data-tool="coin"] .tool-glyph,
 .tool-btn[data-tool="checkpoint"] .tool-glyph {
   font-size: 22px;

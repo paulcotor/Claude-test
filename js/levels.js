@@ -1,11 +1,21 @@
 // Cell codes:
-//   '>'   '<'   '='     basic currents (push 1 / 0)
-//   '>>'  '<<'          strong currents (push 2)
-//   '>>>' '<<<'         very strong (push 3)
-//   'rock'              blocked cell (landing here = wreck)
+//   '>'  '<'  '='        basic horizontal currents (push 1 / 0)
+//   '>>' '<<'             strong horizontal (push 2)
+//   '>>>' '<<<'           very strong horizontal (push 3)
+//   '↗' '↖'              diagonal forward (push +1 col, +1 extra row up)
+//   '↘' '↙'              diagonal backward (push +1 col, -1 row — pulls back)
+//   '⬆'                  pushes ship 1 extra row forward (skips a river)
+//   '⬇'                  pulls ship 1 row back (toward start shore)
+//   'rock'                blocked cell (landing here = wreck)
+//   'buoy'                safe spot — current is ignored on this cell
+//   'whirl-A' .. 'whirl-D' paired teleporters; same letter = same pair
 //
-// rivers[0] is the river closest to the start shore.
-// rivers[N-1] is closest to the goal shore.
+// Each level may also carry:
+//   coins:       [{row, col}, ...]   collectible (row 1..N indexes river rows)
+//   checkpoints: [{row, col}, ...]   must-visit cells (any order) before goal
+//
+// rivers[0] is the river closest to the start shore (row 1).
+// rivers[N-1] is closest to the goal shore (row N).
 // Each river's `cells` array length must equal `cols`.
 
 function fill(n, code) {
@@ -195,12 +205,25 @@ export const LEVELS = [
   },
 ];
 
+// dx = horizontal push, dy = EXTRA vertical push beyond the natural +1 row step.
+// `dy: +1` means the ship skips one river forward.
+// `dy: -1` means the ship is pulled back, possibly creating a cycle.
 export const PUSH_DELTA = {
-  '>': 1,
-  '>>': 2,
-  '>>>': 3,
-  '<': -1,
-  '<<': -2,
-  '<<<': -3,
-  '=': 0,
+  '>':   { dx: +1, dy: 0 },
+  '<':   { dx: -1, dy: 0 },
+  '=':   { dx: 0,  dy: 0 },
+  '>>':  { dx: +2, dy: 0 },
+  '<<':  { dx: -2, dy: 0 },
+  '>>>': { dx: +3, dy: 0 },
+  '<<<': { dx: -3, dy: 0 },
+  '↗':   { dx: +1, dy: +1 },
+  '↖':   { dx: -1, dy: +1 },
+  '⬆':   { dx: 0,  dy: +1 },
+  '↘':   { dx: +1, dy: -1 },
+  '↙':   { dx: -1, dy: -1 },
+  '⬇':   { dx: 0,  dy: -1 },
 };
+
+export function isWhirlpool(code) {
+  return typeof code === 'string' && code.startsWith('whirl-');
+}

@@ -1,5 +1,5 @@
 import { LEVELS } from './levels.js';
-import { simulate, findSolutions } from './game.js';
+import { simulate, findSolutions, findReachableStarts } from './game.js';
 import { generateLevel } from './generator.js';
 import {
   mountStage,
@@ -7,6 +7,8 @@ import {
   clearGhostTrail,
   highlightChosenStart,
   clearChosenStart,
+  highlightHintStarts,
+  clearHintStarts,
   spawnConfetti,
 } from './render.js';
 import {
@@ -18,6 +20,9 @@ import {
   getMarathon,
   setMarathonCurrent,
   resetMarathon,
+  getFailCount,
+  bumpFailCount,
+  resetFailCount,
 } from './storage.js';
 import {
   createEditorState,
@@ -234,9 +239,20 @@ function startLevel(level, mode = 'levels') {
   else title = 'Aventura ' + level.name;
   document.getElementById('game-title').textContent = title;
   document.getElementById('overlay-result').classList.add('hidden');
+  refreshHintButton();
   showScreen('game');
-  // Wait one frame for layout to settle
   requestAnimationFrame(() => mountGame());
+}
+
+function refreshHintButton() {
+  const btn = document.getElementById('btn-hint');
+  if (!btn || !currentLevel) return;
+  const fails = getFailCount(currentLevel.id);
+  if (fails >= 2 && currentMode !== 'editorPreview') {
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
 }
 
 function startSavedCustom(level) {
@@ -287,9 +303,17 @@ function resetRun() {
   if (!currentHandle) return;
   clearGhostTrail(currentHandle.grid);
   clearChosenStart(currentHandle.grid);
+  clearHintStarts(currentHandle.grid);
   currentHandle.hideShip();
   chosenStart = null;
 }
+
+document.getElementById('btn-hint').addEventListener('click', () => {
+  if (!currentLevel || !currentHandle) return;
+  audio.playClick();
+  const cols = findReachableStarts(currentLevel);
+  highlightHintStarts(currentHandle.grid, cols);
+});
 
 document.getElementById('btn-launch').addEventListener('click', async () => {
   if (isAnimating) return;
@@ -308,13 +332,44 @@ document.getElementById('btn-launch').addEventListener('click', async () => {
 
 async function animatePath(path) {
   if (!currentHandle) return;
-  // Start at frame 0
   const first = path[0];
   currentHandle.setShipPos(first.col, first.row, false);
   currentHandle.showShip();
 
   for (let i = 1; i < path.length; i++) {
     const f = path[i];
+
+    // Coin and checkpoint events trigger an effect on the underlying cell,
+    // not a ship move.
+    if (f.kind === 'coin') {
+      const cellEl = currentHandle.cellAt(f.row, f.col);
+      const coinEl = cellEl?.querySelector('.coin-glyph');
+      if (coinEl) {
+        coinEl.classList.add('collected');
+        setTimeout(() => coinEl.remove(), 400);
+      }
+      audio.playStep();
+      continue;
+    }
+    if (f.kind === 'checkpoint') {
+      const cellEl = currentHandle.cellAt(f.row, f.col);
+      const cpEl = cellEl?.querySelector('.checkpoint-glyph');
+      if (cpEl) {
+        cpEl.textContent = '✅';
+        cpEl.classList.add('hit');
+      }
+      audio.playStep();
+      continue;
+    }
+    if (f.kind === 'teleport') {
+      audio.playWind();
+      currentHandle.ship.classList.add('teleporting');
+      currentHandle.setShipPos(f.col, f.row, false);
+      await wait(220);
+      currentHandle.ship.classList.remove('teleporting');
+      continue;
+    }
+
     if (f.kind === 'pushed') {
       audio.playWind();
     } else if (f.kind === 'land' || f.kind === 'goal') {
@@ -347,17 +402,22 @@ function showResult(result) {
 
   if (result.success) {
     let stars;
+    const coinsGot = result.coinsCollected?.size ?? 0;
+    const coinsTotal = result.totalCoins ?? 0;
     if (currentMode === 'marathon') {
       setMarathonCurrent(marathonLevelNum + 1);
-      stars = 3;
+      stars = coinsTotal > 0 && coinsGot >= coinsTotal ? 3 : (attempts <= 1 ? 3 : 2);
     } else if (currentMode === 'levels') {
-      stars = recordResult(currentLevel.id, attempts);
+      stars = recordResult(currentLevel.id, attempts, coinsGot, coinsTotal);
     } else {
       stars = 3;
     }
+    resetFailCount(currentLevel.id);
     emoji.textContent = '🎉';
     title.textContent = 'BRAVO!';
-    starsEl.textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    let starsLine = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    if (coinsTotal > 0) starsLine += `  💰${coinsGot}/${coinsTotal}`;
+    starsEl.textContent = starsLine;
     audio.playVictory();
     spawnConfetti(document.getElementById('screen-game'), 50);
 
@@ -373,13 +433,19 @@ function showResult(result) {
       closeBtn.style.display = '';
     }
   } else {
-    emoji.textContent = result.reason === 'wreck' ? '🪨' : '🌊';
-    title.textContent = result.reason === 'wreck' ? 'BUF!' : 'PLOUF!';
+    if (result.reason === 'wreck') { emoji.textContent = '🪨'; title.textContent = 'BUF!'; }
+    else if (result.reason === 'lost') { emoji.textContent = '🌀'; title.textContent = 'PIERDUT!'; }
+    else if (result.reason === 'missed-checkpoint') { emoji.textContent = '⭐'; title.textContent = 'STELE!'; }
+    else { emoji.textContent = '🌊'; title.textContent = 'PLOUF!'; }
     starsEl.textContent = '';
     drawGhostTrail(currentHandle, result.path);
     retryBtn.style.display = '';
     if (currentMode === 'savedCustom' || currentMode === 'editorPreview') {
       closeBtn.style.display = '';
+    }
+    if (currentMode !== 'editorPreview') {
+      bumpFailCount(currentLevel.id);
+      refreshHintButton();
     }
   }
   overlay.classList.remove('hidden');
@@ -482,7 +548,11 @@ document.getElementById('btn-editor-save').addEventListener('click', () => {
   audio.playClick();
   const result = trySaveLevel(editorState);
   if (!result.ok) {
-    alert('🤔 Harta asta nu are nicio soluție! Apasă 🔧 REPARĂ ca să mut insula într-un loc bun.');
+    if (result.reason === 'whirlpool-orphan') {
+      alert('🌀 Fiecare 🌀 trebuie pus în PERECHE! Pune al doilea capăt sau șterge-l pe primul.');
+    } else {
+      alert('🤔 Harta asta nu are nicio soluție! Apasă 🔧 REPARĂ ca să mut insula într-un loc bun.');
+    }
     return;
   }
   alert('💾 Salvat! Găsești harta în "Hărțile mele".');

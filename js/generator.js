@@ -1,6 +1,5 @@
 import { findSolutions } from './game.js';
 
-// Deterministic PRNG (mulberry32). Same seed → same sequence.
 function mulberry32(seed) {
   let s = seed | 0;
   return function () {
@@ -21,19 +20,26 @@ function difficultyParams(level) {
   const cols = Math.min(8, 4 + Math.floor((level - 1) / 4));
   const rivers = Math.min(7, 2 + Math.floor((level - 1) / 3));
 
-  // Mechanics expand. Weight basic ones higher so puzzles stay readable.
   const mechanics = ['>', '<', '=', '>', '<', '=', '>', '<'];
   if (level >= 5) mechanics.push('>>', '<<');
   if (level >= 9) mechanics.push('>>', '<<');
   if (level >= 13) mechanics.push('>>>', '<<<');
+  if (level >= 16) mechanics.push('↗', '↖');
+  if (level >= 20) mechanics.push('⬆');
 
   const rockProb = Math.min(0.18, Math.max(0, (level - 6) * 0.015));
 
-  return { cols, rivers, mechanics, rockProb };
+  const useWhirlpool = level >= 24;
+  const useBuoy = level >= 22;
+  const useCoins = level >= 18;
+  const useCheckpoint = level >= 28;
+
+  return { cols, rivers, mechanics, rockProb, useWhirlpool, useBuoy, useCoins, useCheckpoint };
 }
 
 function buildRandomLevel(rng, params) {
-  const { cols, rivers: numRivers, mechanics, rockProb } = params;
+  const { cols, rivers: numRivers, mechanics, rockProb,
+          useWhirlpool, useBuoy, useCoins, useCheckpoint } = params;
   const rivers = [];
   for (let r = 0; r < numRivers; r++) {
     const cells = [];
@@ -47,15 +53,55 @@ function buildRandomLevel(rng, params) {
     rivers.push({ cells });
   }
   const goalCol = Math.floor(rng() * cols);
-  return { cols, rivers, goalCol };
+
+  // Optional whirlpool pair (one pair max, somewhere in middle rows).
+  if (useWhirlpool && rng() < 0.5 && numRivers >= 3) {
+    const r1 = 1 + Math.floor(rng() * (numRivers - 1));
+    const r2 = 1 + Math.floor(rng() * (numRivers - 1));
+    const c1 = Math.floor(rng() * cols);
+    const c2 = Math.floor(rng() * cols);
+    if (rivers[r1].cells[c1] !== 'rock' && rivers[r2].cells[c2] !== 'rock' &&
+        !(r1 === r2 && c1 === c2)) {
+      rivers[r1].cells[c1] = 'whirl-A';
+      rivers[r2].cells[c2] = 'whirl-A';
+    }
+  }
+
+  // Optional buoy (single cell).
+  if (useBuoy && rng() < 0.4) {
+    const r = Math.floor(rng() * numRivers);
+    const c = Math.floor(rng() * cols);
+    if (rivers[r].cells[c] !== 'rock' && !rivers[r].cells[c].startsWith('whirl-')) {
+      rivers[r].cells[c] = 'buoy';
+    }
+  }
+
+  // Optional coins (1-2 of them).
+  const coins = [];
+  if (useCoins && rng() < 0.6) {
+    const num = 1 + Math.floor(rng() * 2);
+    for (let i = 0; i < num; i++) {
+      const row = 1 + Math.floor(rng() * numRivers);
+      const col = Math.floor(rng() * cols);
+      if (!coins.some(p => p.row === row && p.col === col)) coins.push({ row, col });
+    }
+  }
+
+  // Optional 1 checkpoint.
+  const checkpoints = [];
+  if (useCheckpoint && rng() < 0.5) {
+    const row = 1 + Math.floor(rng() * numRivers);
+    const col = Math.floor(rng() * cols);
+    checkpoints.push({ row, col });
+  }
+
+  return { cols, rivers, goalCol, coins, checkpoints };
 }
 
 // Generate a deterministic, solvable level for the given level number.
-// Same level number always produces the same puzzle.
 export function generateLevel(level) {
   const params = difficultyParams(level);
 
-  // First pass: prefer puzzles with exactly 1 solution (clearest).
   for (let attempt = 0; attempt < 400; attempt++) {
     const rng = mulberry32(level * 31337 + attempt * 7);
     const candidate = buildRandomLevel(rng, params);
@@ -67,7 +113,6 @@ export function generateLevel(level) {
     }
   }
 
-  // Second pass: any small number of solutions.
   for (let attempt = 0; attempt < 400; attempt++) {
     const rng = mulberry32(level * 31337 + 99991 + attempt * 13);
     const candidate = buildRandomLevel(rng, params);
@@ -79,7 +124,6 @@ export function generateLevel(level) {
     }
   }
 
-  // Last resort: trivial level so the user is never stuck.
   return {
     id: `gen-${level}`,
     name: String(level),
@@ -89,5 +133,7 @@ export function generateLevel(level) {
       { cells: ['<', '<', '<', '<', '<'] },
     ],
     goalCol: 2,
+    coins: [],
+    checkpoints: [],
   };
 }

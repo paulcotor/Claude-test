@@ -1,8 +1,19 @@
 import { mountStage } from './render.js';
-import { findSolutions, simulate } from './game.js';
+import { findSolutions, findReachableLandings, simulate } from './game.js';
 import { saveCustomLevel, newCustomId } from './storage.js';
+import { isWhirlpool } from './levels.js';
 
-const TOOLS = ['>', '<', '=', '>>', '<<', '>>>', '<<<', 'rock'];
+// Tools fall in three categories:
+//   PAINT_TOOLS   — replace the cell content (currents, rock, buoy, whirlpool)
+//   TOGGLE_TOOLS  — toggle decoration on/off (coin, checkpoint)
+const PAINT_TOOLS = [
+  '>', '<', '=', '>>', '<<', '>>>', '<<<',
+  '↗', '↖', '↘', '↙', '⬆', '⬇',
+  'rock', 'buoy',
+  'whirl-A', 'whirl-B', 'whirl-C', 'whirl-D',
+];
+const TOGGLE_TOOLS = ['coin', 'checkpoint'];
+const TOOLS = [...PAINT_TOOLS, ...TOGGLE_TOOLS];
 
 function blankRiver(cols) {
   return { cells: Array.from({ length: cols }, () => '>') };
@@ -13,17 +24,20 @@ export function createEditorState() {
     cols: 5,
     rivers: [blankRiver(5), blankRiver(5), blankRiver(5)],
     goalCol: 2,
+    coins: [],
+    checkpoints: [],
     selectedTool: '>',
     editingId: null,
   };
 }
 
-// Load an existing custom level into the editor for editing.
 export function loadEditorState(level) {
   return {
     cols: level.cols,
     rivers: level.rivers.map(r => ({ cells: [...r.cells] })),
     goalCol: level.goalCol,
+    coins: (level.coins || []).map(p => ({ ...p })),
+    checkpoints: (level.checkpoints || []).map(p => ({ ...p })),
     selectedTool: '>',
     editingId: level.id || null,
   };
@@ -36,12 +50,21 @@ export function buildLevelFromState(state) {
     cols: state.cols,
     rivers: state.rivers.map(r => ({ cells: [...r.cells] })),
     goalCol: state.goalCol,
+    coins: state.coins.map(p => ({ ...p })),
+    checkpoints: state.checkpoints.map(p => ({ ...p })),
     custom: true,
   };
 }
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
+}
+
+// Drop coins/checkpoints that fall outside the new bounds.
+function trimDecorations(state) {
+  const inRange = p => p.row >= 1 && p.row <= state.rivers.length && p.col >= 0 && p.col < state.cols;
+  state.coins = state.coins.filter(inRange);
+  state.checkpoints = state.checkpoints.filter(inRange);
 }
 
 export function adjustCols(state, delta) {
@@ -55,6 +78,7 @@ export function adjustCols(state, delta) {
     return { cells };
   });
   state.goalCol = clamp(state.goalCol, 0, next - 1);
+  trimDecorations(state);
   return state;
 }
 
@@ -63,6 +87,7 @@ export function adjustRivers(state, delta) {
   if (next === state.rivers.length) return state;
   while (state.rivers.length < next) state.rivers.push(blankRiver(state.cols));
   state.rivers.length = next;
+  trimDecorations(state);
   return state;
 }
 
@@ -70,10 +95,50 @@ export function setSelectedTool(state, tool) {
   if (TOOLS.includes(tool)) state.selectedTool = tool;
 }
 
+// Count how many times a whirlpool code already appears on the grid.
+function countWhirl(state, code) {
+  let n = 0;
+  for (const river of state.rivers) {
+    for (const cell of river.cells) {
+      if (cell === code) n++;
+    }
+  }
+  return n;
+}
+
+// Remove all instances of a whirlpool code (both ends).
+function clearWhirl(state, code) {
+  for (const river of state.rivers) {
+    for (let i = 0; i < river.cells.length; i++) {
+      if (river.cells[i] === code) river.cells[i] = '=';
+    }
+  }
+}
+
+function paintCell(state, riverIdx, col, tool) {
+  // Whirlpools: enforce max 2 endpoints. Painting a 3rd resets the pair.
+  if (isWhirlpool(tool)) {
+    const existing = countWhirl(state, tool);
+    if (existing >= 2) clearWhirl(state, tool);
+  }
+  state.rivers[riverIdx].cells[col] = tool;
+}
+
+function toggleCoin(state, row, col) {
+  const idx = state.coins.findIndex(p => p.row === row && p.col === col);
+  if (idx >= 0) state.coins.splice(idx, 1);
+  else state.coins.push({ row, col });
+}
+
+function toggleCheckpoint(state, row, col) {
+  const idx = state.checkpoints.findIndex(p => p.row === row && p.col === col);
+  if (idx >= 0) state.checkpoints.splice(idx, 1);
+  else state.checkpoints.push({ row, col });
+}
+
 export function renderEditor(stage, state, onChange) {
   const handle = mountStage(stage, buildLevelFromState(state), { editable: true });
 
-  // Bind taps on cells: paint with the selected tool
   handle.grid.addEventListener('pointerdown', (e) => {
     const cell = e.target.closest('.cell');
     if (!cell) return;
@@ -82,7 +147,15 @@ export function renderEditor(stage, state, onChange) {
 
     if (role === 'river') {
       const riverIdx = Number(cell.dataset.river);
-      state.rivers[riverIdx].cells[col] = state.selectedTool;
+      const row = riverIdx + 1;
+      const tool = state.selectedTool;
+      if (tool === 'coin') {
+        toggleCoin(state, row, col);
+      } else if (tool === 'checkpoint') {
+        toggleCheckpoint(state, row, col);
+      } else if (PAINT_TOOLS.includes(tool)) {
+        paintCell(state, riverIdx, col, tool);
+      }
       onChange();
     } else if (role === 'goal' || role === 'goal-blocked') {
       state.goalCol = col;
@@ -93,39 +166,54 @@ export function renderEditor(stage, state, onChange) {
   return handle;
 }
 
+// Strip orphan whirlpool ends (cells whose pair partner is missing).
+function dropOrphanWhirlpools(level) {
+  const counts = new Map();
+  for (const river of level.rivers) {
+    for (const cell of river.cells) {
+      if (isWhirlpool(cell)) counts.set(cell, (counts.get(cell) || 0) + 1);
+    }
+  }
+  for (const [code, n] of counts) {
+    if (n !== 2) {
+      for (const river of level.rivers) {
+        for (let i = 0; i < river.cells.length; i++) {
+          if (river.cells[i] === code) river.cells[i] = '=';
+        }
+      }
+    }
+  }
+}
+
 export function trySaveLevel(state) {
   const level = buildLevelFromState(state);
+  // Validate whirlpools: every code must appear exactly twice.
+  const whirlCounts = new Map();
+  for (const river of level.rivers) {
+    for (const cell of river.cells) {
+      if (isWhirlpool(cell)) whirlCounts.set(cell, (whirlCounts.get(cell) || 0) + 1);
+    }
+  }
+  for (const [, n] of whirlCounts) {
+    if (n !== 2) return { ok: false, reason: 'whirlpool-orphan' };
+  }
   const solutions = findSolutions(level);
   if (solutions.length === 0) {
     return { ok: false, reason: 'no-solution' };
   }
   saveCustomLevel(level);
-  // Mark this state as now editing the saved level (so next save overwrites)
   state.editingId = level.id;
   return { ok: true, level };
 }
 
-// Find every column the ship can actually reach on the goal shore (regardless
-// of whether it matches goalCol). Returns an array of distinct columns.
-function findReachableLandings(level) {
-  const reachable = new Set();
-  for (let c = 0; c < level.cols; c++) {
-    const result = simulate(level, c);
-    const last = result.path[result.path.length - 1];
-    if (last.row === level.rivers.length + 1) {
-      reachable.add(last.col);
-    }
-  }
-  return [...reachable];
-}
-
 // If the level has no solution, move goalCol to the nearest reachable landing.
-// Returns one of:
-//   { fixed: true, oldGoal, newGoal }
-//   { fixed: false, reason: 'already-solvable' }
-//   { fixed: false, reason: 'no-paths' } — every start crashes; need to remove rocks
 export function autoFix(state) {
   const level = buildLevelFromState(state);
+  // First clean up orphan whirlpools so simulate doesn't see partial pairs.
+  dropOrphanWhirlpools(level);
+  // Mirror those changes back into the editor state so the user sees the fix.
+  state.rivers = level.rivers.map(r => ({ cells: [...r.cells] }));
+
   if (findSolutions(level).length > 0) {
     return { fixed: false, reason: 'already-solvable' };
   }
@@ -138,5 +226,10 @@ export function autoFix(state) {
     Math.abs(c - oldGoal) < Math.abs(best - oldGoal) ? c : best
   );
   state.goalCol = newGoal;
+  // Re-build to confirm
+  const level2 = buildLevelFromState(state);
+  if (findSolutions(level2).length === 0) {
+    return { fixed: false, reason: 'no-paths' };
+  }
   return { fixed: true, oldGoal, newGoal };
 }

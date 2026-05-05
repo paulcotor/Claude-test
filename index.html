@@ -75,6 +75,20 @@
           <div class="overlay-buttons">
             <button id="btn-result-retry" class="big-btn">🔄 Din nou</button>
             <button id="btn-result-next" class="big-btn primary">▶️ Următor</button>
+            <button id="btn-result-close" class="big-btn">✖️ Închide</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="overlay-custom-options" class="overlay hidden">
+        <div class="overlay-card">
+          <div class="result-emoji">🗺️</div>
+          <div class="result-title">Ce vrei să faci?</div>
+          <div class="overlay-buttons" style="flex-direction: column; gap: 8px;">
+            <button id="btn-custom-play" class="big-btn primary">🚀 JOACĂ</button>
+            <button id="btn-custom-edit" class="big-btn">✏️ EDITEAZĂ</button>
+            <button id="btn-custom-delete" class="big-btn">🗑️ ȘTERGE</button>
+            <button id="btn-custom-cancel" class="big-btn">↩️ ÎNAPOI</button>
           </div>
         </div>
       </div>
@@ -101,6 +115,17 @@
           <span id="ctrl-rivers" class="ctrl-value">3</span>
           <button class="ctrl-btn" data-ctrl="rivers-plus">+</button>
         </div>
+      </div>
+
+      <div id="editor-toolbar" class="editor-toolbar">
+        <button class="tool-btn" data-tool=">"><span class="tool-glyph">▶</span></button>
+        <button class="tool-btn" data-tool="<"><span class="tool-glyph">◀</span></button>
+        <button class="tool-btn" data-tool="="><span class="tool-glyph">·</span></button>
+        <button class="tool-btn" data-tool=">>"><span class="tool-glyph">▶▶</span></button>
+        <button class="tool-btn" data-tool="<<"><span class="tool-glyph">◀◀</span></button>
+        <button class="tool-btn" data-tool=">>>"><span class="tool-glyph">▶▶▶</span></button>
+        <button class="tool-btn" data-tool="<<<"><span class="tool-glyph">◀◀◀</span></button>
+        <button class="tool-btn" data-tool="rock"><span class="tool-glyph">🪨</span></button>
       </div>
 
       <div id="editor-stage" class="stage editor-stage"></div>

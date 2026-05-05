@@ -2,12 +2,7 @@ import { mountStage } from './render.js';
 import { findSolutions, simulate } from './game.js';
 import { saveCustomLevel, newCustomId } from './storage.js';
 
-const CYCLE = ['>', '<', '=', '>>', '<<', 'rock'];
-
-function nextCode(code) {
-  const idx = CYCLE.indexOf(code);
-  return CYCLE[(idx + 1) % CYCLE.length];
-}
+const TOOLS = ['>', '<', '=', '>>', '<<', '>>>', '<<<', 'rock'];
 
 function blankRiver(cols) {
   return { cells: Array.from({ length: cols }, () => '>') };
@@ -18,12 +13,25 @@ export function createEditorState() {
     cols: 5,
     rivers: [blankRiver(5), blankRiver(5), blankRiver(5)],
     goalCol: 2,
+    selectedTool: '>',
+    editingId: null,
+  };
+}
+
+// Load an existing custom level into the editor for editing.
+export function loadEditorState(level) {
+  return {
+    cols: level.cols,
+    rivers: level.rivers.map(r => ({ cells: [...r.cells] })),
+    goalCol: level.goalCol,
+    selectedTool: '>',
+    editingId: level.id || null,
   };
 }
 
 export function buildLevelFromState(state) {
   return {
-    id: newCustomId(),
+    id: state.editingId || newCustomId(),
     name: 'Hartă',
     cols: state.cols,
     rivers: state.rivers.map(r => ({ cells: [...r.cells] })),
@@ -58,10 +66,14 @@ export function adjustRivers(state, delta) {
   return state;
 }
 
+export function setSelectedTool(state, tool) {
+  if (TOOLS.includes(tool)) state.selectedTool = tool;
+}
+
 export function renderEditor(stage, state, onChange) {
   const handle = mountStage(stage, buildLevelFromState(state), { editable: true });
 
-  // Bind taps on cells
+  // Bind taps on cells: paint with the selected tool
   handle.grid.addEventListener('pointerdown', (e) => {
     const cell = e.target.closest('.cell');
     if (!cell) return;
@@ -70,8 +82,7 @@ export function renderEditor(stage, state, onChange) {
 
     if (role === 'river') {
       const riverIdx = Number(cell.dataset.river);
-      const cur = state.rivers[riverIdx].cells[col];
-      state.rivers[riverIdx].cells[col] = nextCode(cur);
+      state.rivers[riverIdx].cells[col] = state.selectedTool;
       onChange();
     } else if (role === 'goal' || role === 'goal-blocked') {
       state.goalCol = col;
@@ -89,6 +100,8 @@ export function trySaveLevel(state) {
     return { ok: false, reason: 'no-solution' };
   }
   saveCustomLevel(level);
+  // Mark this state as now editing the saved level (so next save overwrites)
+  state.editingId = level.id;
   return { ok: true, level };
 }
 

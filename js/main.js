@@ -21,12 +21,14 @@ import {
 } from './storage.js';
 import {
   createEditorState,
+  loadEditorState,
   renderEditor,
   adjustCols,
   adjustRivers,
   trySaveLevel,
   buildLevelFromState,
   autoFix,
+  setSelectedTool,
 } from './editor.js';
 import * as audio from './audio.js';
 
@@ -135,11 +137,8 @@ function buildCustomTab() {
       longPressed = false;
       pressTimer = setTimeout(() => {
         longPressed = true;
-        if (confirm('Ștergi această hartă?')) {
-          deleteCustomLevel(lvl.id);
-          buildCustomTab();
-        }
-      }, 1200);
+        showCustomOptions(lvl);
+      }, 700);
     });
     card.addEventListener('pointerleave', () => clearTimeout(pressTimer));
     card.addEventListener('pointercancel', () => clearTimeout(pressTimer));
@@ -147,13 +146,55 @@ function buildCustomTab() {
       clearTimeout(pressTimer);
       if (!longPressed) {
         audio.playClick();
-        startLevel(lvl);
+        startSavedCustom(lvl);
       }
     });
 
     grid.appendChild(card);
   });
 }
+
+// ============== Custom map options modal ==============
+let customOptionsTarget = null;
+
+function showCustomOptions(lvl) {
+  customOptionsTarget = lvl;
+  document.getElementById('overlay-custom-options').classList.remove('hidden');
+}
+
+function hideCustomOptions() {
+  customOptionsTarget = null;
+  document.getElementById('overlay-custom-options').classList.add('hidden');
+}
+
+document.getElementById('btn-custom-play').addEventListener('click', () => {
+  audio.playClick();
+  const lvl = customOptionsTarget;
+  hideCustomOptions();
+  if (lvl) startSavedCustom(lvl);
+});
+
+document.getElementById('btn-custom-edit').addEventListener('click', () => {
+  audio.playClick();
+  const lvl = customOptionsTarget;
+  hideCustomOptions();
+  if (lvl) openEditorWith(lvl);
+});
+
+document.getElementById('btn-custom-delete').addEventListener('click', () => {
+  audio.playClick();
+  const lvl = customOptionsTarget;
+  if (lvl && confirm('Sigur ștergi harta?')) {
+    deleteCustomLevel(lvl.id);
+    buildCustomTab();
+  }
+  hideCustomOptions();
+});
+
+document.getElementById('btn-custom-cancel').addEventListener('click', () => {
+  audio.playClick();
+  hideCustomOptions();
+});
 
 // Tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -178,18 +219,28 @@ let currentHandle = null;
 let chosenStart = null;
 let attempts = 0;
 let isAnimating = false;
+// 'levels' | 'savedCustom' | 'editorPreview' | 'marathon'
+let currentMode = 'levels';
 
-function startLevel(level) {
+function startLevel(level, mode = 'levels') {
   currentLevel = level;
   currentLevelIndex = LEVELS.findIndex(l => l.id === level.id);
+  currentMode = mode;
   attempts = 0;
   chosenStart = null;
-  document.getElementById('game-title').textContent =
-    level.custom ? 'Hartă custom' : 'Aventura ' + level.name;
+  let title;
+  if (mode === 'savedCustom') title = '🗺️ ' + (level.name || 'Hartă custom');
+  else if (mode === 'editorPreview') title = '🧪 Test';
+  else title = 'Aventura ' + level.name;
+  document.getElementById('game-title').textContent = title;
   document.getElementById('overlay-result').classList.add('hidden');
   showScreen('game');
   // Wait one frame for layout to settle
   requestAnimationFrame(() => mountGame());
+}
+
+function startSavedCustom(level) {
+  startLevel(level, 'savedCustom');
 }
 
 function mountGame() {
@@ -213,6 +264,11 @@ function mountGame() {
 
 document.getElementById('btn-back-from-game').addEventListener('click', () => {
   audio.playClick();
+  if (currentMode === 'editorPreview') {
+    showScreen('editor');
+    requestAnimationFrame(() => renderEditorView());
+    return;
+  }
   marathonRunning = false;
   showScreen('menu');
   buildLevelsTab();
@@ -280,15 +336,24 @@ function showResult(result) {
   const emoji = document.getElementById('result-emoji');
   const title = document.getElementById('result-title');
   const starsEl = document.getElementById('result-stars');
+  const retryBtn = document.getElementById('btn-result-retry');
   const nextBtn = document.getElementById('btn-result-next');
+  const closeBtn = document.getElementById('btn-result-close');
+
+  // Default: hide all action buttons; we re-enable only the ones we need.
+  retryBtn.style.display = 'none';
+  nextBtn.style.display = 'none';
+  closeBtn.style.display = 'none';
 
   if (result.success) {
     let stars;
-    if (marathonRunning) {
+    if (currentMode === 'marathon') {
       setMarathonCurrent(marathonLevelNum + 1);
       stars = 3;
-    } else {
+    } else if (currentMode === 'levels') {
       stars = recordResult(currentLevel.id, attempts);
+    } else {
+      stars = 3;
     }
     emoji.textContent = '🎉';
     title.textContent = 'BRAVO!';
@@ -296,18 +361,26 @@ function showResult(result) {
     audio.playVictory();
     spawnConfetti(document.getElementById('screen-game'), 50);
 
-    if (marathonRunning) {
+    if (currentMode === 'marathon') {
       nextBtn.style.display = '';
-    } else {
+    } else if (currentMode === 'levels') {
+      retryBtn.style.display = '';
       const nextLvl = LEVELS[currentLevelIndex + 1];
-      nextBtn.style.display = nextLvl ? '' : 'none';
+      if (nextLvl) nextBtn.style.display = '';
+    } else {
+      // savedCustom / editorPreview: retry + close
+      retryBtn.style.display = '';
+      closeBtn.style.display = '';
     }
   } else {
     emoji.textContent = result.reason === 'wreck' ? '🪨' : '🌊';
     title.textContent = result.reason === 'wreck' ? 'BUF!' : 'PLOUF!';
     starsEl.textContent = '';
     drawGhostTrail(currentHandle, result.path);
-    nextBtn.style.display = 'none';
+    retryBtn.style.display = '';
+    if (currentMode === 'savedCustom' || currentMode === 'editorPreview') {
+      closeBtn.style.display = '';
+    }
   }
   overlay.classList.remove('hidden');
 }
@@ -319,12 +392,24 @@ document.getElementById('btn-result-retry').addEventListener('click', () => {
 
 document.getElementById('btn-result-next').addEventListener('click', () => {
   audio.playClick();
-  if (marathonRunning) {
+  if (currentMode === 'marathon') {
     onMarathonResultNext();
     return;
   }
   const nextLvl = LEVELS[currentLevelIndex + 1];
-  if (nextLvl) startLevel(nextLvl);
+  if (nextLvl) startLevel(nextLvl, 'levels');
+});
+
+document.getElementById('btn-result-close').addEventListener('click', () => {
+  audio.playClick();
+  document.getElementById('overlay-result').classList.add('hidden');
+  if (currentMode === 'editorPreview') {
+    showScreen('editor');
+    requestAnimationFrame(() => renderEditorView());
+  } else if (currentMode === 'savedCustom') {
+    showScreen('menu');
+    switchTab('custom');
+  }
 });
 
 // ============== Editor flow ==============
@@ -337,12 +422,34 @@ function openEditor() {
   requestAnimationFrame(() => renderEditorView());
 }
 
+function openEditorWith(level) {
+  editorState = loadEditorState(level);
+  showScreen('editor');
+  requestAnimationFrame(() => renderEditorView());
+}
+
 function renderEditorView() {
   const stage = document.getElementById('editor-stage');
   document.getElementById('ctrl-cols').textContent = editorState.cols;
   document.getElementById('ctrl-rivers').textContent = editorState.rivers.length;
   editorHandle = renderEditor(stage, editorState, () => renderEditorView());
+  // Reflect the selected tool in the toolbar
+  document.querySelectorAll('.tool-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.tool === editorState.selectedTool);
+  });
 }
+
+// Wire up toolbar buttons
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    audio.playClick();
+    if (!editorState) return;
+    setSelectedTool(editorState, btn.dataset.tool);
+    document.querySelectorAll('.tool-btn').forEach(b => {
+      b.classList.toggle('selected', b === btn);
+    });
+  });
+});
 
 document.getElementById('btn-back-from-editor').addEventListener('click', () => {
   audio.playClick();
@@ -368,7 +475,7 @@ document.getElementById('btn-test-editor').addEventListener('click', () => {
   testLevel.id = 'editor-preview';
   testLevel.name = 'Test';
   testLevel.custom = true;
-  startLevel(testLevel);
+  startLevel(testLevel, 'editorPreview');
 });
 
 document.getElementById('btn-editor-save').addEventListener('click', () => {
@@ -425,7 +532,7 @@ function startMarathonLevel(n) {
   lvl.id = `marathon-${n}`;
   lvl.name = String(n);
   lvl.custom = false;
-  startLevel(lvl);
+  startLevel(lvl, 'marathon');
   // Override title for clarity
   document.getElementById('game-title').textContent = `🏆 Maraton ${n}`;
 }

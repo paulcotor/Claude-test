@@ -29,7 +29,6 @@ const WHIRL_COLORS = {
 
 function cellClass(code) {
   if (code === 'rock') return 'cell river rock';
-  if (code === 'buoy') return 'cell river buoy';
   if (isWhirlpool(code)) return `cell river whirl ${code}`;
   if (code === '>>>' || code === '<<<') return 'cell river very-strong';
   if (code === '>>' || code === '<<') return 'cell river strong';
@@ -39,7 +38,7 @@ function cellClass(code) {
 }
 
 function arrowEl(code) {
-  if (code === 'rock' || code === '=' || code === 'buoy' || isWhirlpool(code)) return null;
+  if (code === 'rock' || code === '=' || isWhirlpool(code)) return null;
   const glyph = ARROW_GLYPHS[code];
   if (!glyph) return null;
   const span = document.createElement('span');
@@ -123,9 +122,6 @@ export function mountStage(stage, level, opts = {}) {
           const w = decoratorEl('🌀', 'whirl-glyph');
           w.style.color = WHIRL_COLORS[code] || '#fff';
           cell.appendChild(w);
-        }
-        if (code === 'buoy') {
-          cell.appendChild(decoratorEl('🪵', 'buoy-glyph'));
         }
       }
 

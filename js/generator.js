@@ -30,16 +30,15 @@ function difficultyParams(level) {
   const rockProb = Math.min(0.18, Math.max(0, (level - 6) * 0.015));
 
   const useWhirlpool = level >= 24;
-  const useBuoy = level >= 22;
   const useCoins = level >= 18;
   const useCheckpoint = level >= 28;
 
-  return { cols, rivers, mechanics, rockProb, useWhirlpool, useBuoy, useCoins, useCheckpoint };
+  return { cols, rivers, mechanics, rockProb, useWhirlpool, useCoins, useCheckpoint };
 }
 
 function buildRandomLevel(rng, params) {
   const { cols, rivers: numRivers, mechanics, rockProb,
-          useWhirlpool, useBuoy, useCoins, useCheckpoint } = params;
+          useWhirlpool, useCoins, useCheckpoint } = params;
   const rivers = [];
   for (let r = 0; r < numRivers; r++) {
     const cells = [];
@@ -64,15 +63,6 @@ function buildRandomLevel(rng, params) {
         !(r1 === r2 && c1 === c2)) {
       rivers[r1].cells[c1] = 'whirl-A';
       rivers[r2].cells[c2] = 'whirl-A';
-    }
-  }
-
-  // Optional buoy (single cell).
-  if (useBuoy && rng() < 0.4) {
-    const r = Math.floor(rng() * numRivers);
-    const c = Math.floor(rng() * cols);
-    if (rivers[r].cells[c] !== 'rock' && !rivers[r].cells[c].startsWith('whirl-')) {
-      rivers[r].cells[c] = 'buoy';
     }
   }
 

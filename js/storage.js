@@ -58,7 +58,16 @@ export function isUnlocked(levelIndex, allLevels) {
 }
 
 export function getCustomLevels() {
-  return readJSON(CUSTOM_KEY, []);
+  const list = readJSON(CUSTOM_KEY, []);
+  // Drop the retired 'buoy' cell type from any older custom levels.
+  for (const lvl of list) {
+    for (const river of lvl.rivers || []) {
+      for (let i = 0; i < river.cells.length; i++) {
+        if (river.cells[i] === 'buoy') river.cells[i] = '=';
+      }
+    }
+  }
+  return list;
 }
 
 export function saveCustomLevel(level) {

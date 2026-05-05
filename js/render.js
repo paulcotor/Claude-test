@@ -1,3 +1,5 @@
+import { isWhirlpool } from './levels.js';
+
 const GAP = 2;
 const MIN_CELL = 40;
 const MAX_CELL = 84;
@@ -10,17 +12,34 @@ const ARROW_GLYPHS = {
   '>>>': '▶▶▶',
   '<<<': '◀◀◀',
   '=':   '',
+  '↗':   '↗',
+  '↖':   '↖',
+  '↘':   '↘',
+  '↙':   '↙',
+  '⬆':   '⬆',
+  '⬇':   '⬇',
+};
+
+const WHIRL_COLORS = {
+  'whirl-A': '#ff5252',
+  'whirl-B': '#42a5f5',
+  'whirl-C': '#66bb6a',
+  'whirl-D': '#ab47bc',
 };
 
 function cellClass(code) {
   if (code === 'rock') return 'cell river rock';
+  if (code === 'buoy') return 'cell river buoy';
+  if (isWhirlpool(code)) return `cell river whirl ${code}`;
   if (code === '>>>' || code === '<<<') return 'cell river very-strong';
   if (code === '>>' || code === '<<') return 'cell river strong';
+  if (code === '↗' || code === '↖' || code === '↘' || code === '↙' ||
+      code === '⬆' || code === '⬇') return 'cell river diag';
   return 'cell river';
 }
 
 function arrowEl(code) {
-  if (code === 'rock' || code === '=') return null;
+  if (code === 'rock' || code === '=' || code === 'buoy' || isWhirlpool(code)) return null;
   const glyph = ARROW_GLYPHS[code];
   if (!glyph) return null;
   const span = document.createElement('span');
@@ -29,10 +48,15 @@ function arrowEl(code) {
   return span;
 }
 
-// Compute cell size that fits the stage
+function decoratorEl(text, className) {
+  const span = document.createElement('span');
+  span.className = className;
+  span.textContent = text;
+  return span;
+}
+
 function computeCellSize(stage, cols, rows) {
   const rect = stage.getBoundingClientRect();
-  // Reserve some breathing room (16px on each side)
   const availW = rect.width - 32;
   const availH = rect.height - 32;
   const byW = Math.floor((availW - (cols - 1) * GAP) / cols);
@@ -40,12 +64,20 @@ function computeCellSize(stage, cols, rows) {
   return Math.max(MIN_CELL, Math.min(MAX_CELL, Math.min(byW, byH)));
 }
 
+function hasCoinAt(level, row, col) {
+  return (level.coins || []).some(p => p.row === row && p.col === col);
+}
+
+function hasCheckpointAt(level, row, col) {
+  return (level.checkpoints || []).some(p => p.row === row && p.col === col);
+}
+
 export function mountStage(stage, level, opts = {}) {
   stage.innerHTML = '';
 
   const cols = level.cols;
   const numRivers = level.rivers.length;
-  const rows = numRivers + 2; // start shore + rivers + goal shore
+  const rows = numRivers + 2;
 
   const cellSize = computeCellSize(stage, cols, rows);
 
@@ -59,18 +91,15 @@ export function mountStage(stage, level, opts = {}) {
   grid.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
   grid.style.position = 'relative';
 
-  // Build cells row-by-row
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = document.createElement('div');
 
       if (r === 0) {
-        // Start shore — pickable
         cell.className = 'cell shore start-pick';
         cell.dataset.role = 'start';
         cell.dataset.col = c;
       } else if (r === rows - 1) {
-        // Goal shore — only goalCol is the safe landing; everything else shows a rock
         if (c === level.goalCol) {
           cell.className = 'cell shore goal';
           cell.dataset.role = 'goal';
@@ -88,12 +117,33 @@ export function mountStage(stage, level, opts = {}) {
         cell.dataset.river = riverIdx;
         cell.dataset.code = code;
         if (opts.editable) cell.classList.add('editable');
-        if (code !== 'rock' && code !== '=') {
-          const a = arrowEl(code);
-          if (a) cell.appendChild(a);
+        const a = arrowEl(code);
+        if (a) cell.appendChild(a);
+        if (isWhirlpool(code)) {
+          const w = decoratorEl('🌀', 'whirl-glyph');
+          w.style.color = WHIRL_COLORS[code] || '#fff';
+          cell.appendChild(w);
+        }
+        if (code === 'buoy') {
+          cell.appendChild(decoratorEl('🪵', 'buoy-glyph'));
         }
       }
 
+      // Decorate row index for shore + river: row 0=start, 1..N=rivers, N+1=goal
+      const logicalRow = r;
+
+      // Coin overlay
+      if (hasCoinAt(level, logicalRow, c)) {
+        cell.appendChild(decoratorEl('💰', 'coin-glyph'));
+        cell.dataset.coin = '1';
+      }
+      // Checkpoint overlay
+      if (hasCheckpointAt(level, logicalRow, c)) {
+        cell.appendChild(decoratorEl('⭐', 'checkpoint-glyph'));
+        cell.dataset.checkpoint = '1';
+      }
+
+      cell.dataset.row = logicalRow;
       grid.appendChild(cell);
     }
   }
@@ -124,8 +174,6 @@ export function mountStage(stage, level, opts = {}) {
         ship.classList.remove('no-transition');
       } else {
         ship.classList.add('no-transition');
-        // Force reflow so the browser applies "no transition" before the new transform.
-        // Without this, iOS Safari may skip the next animated move.
         void ship.offsetHeight;
       }
       const x = col * (cellSize + GAP);
@@ -134,6 +182,9 @@ export function mountStage(stage, level, opts = {}) {
     },
     showShip() { ship.style.opacity = '1'; },
     hideShip() { ship.style.opacity = '0'; },
+    cellAt(row, col) {
+      return grid.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    },
   };
 }
 
@@ -145,6 +196,7 @@ export function drawGhostTrail(handle, path) {
   const { grid, cellSize } = handle;
   clearGhostTrail(grid);
   for (const frame of path) {
+    if (frame.kind === 'coin' || frame.kind === 'checkpoint') continue;
     const dot = document.createElement('div');
     dot.className = 'ghost-dot';
     const x = frame.col * (cellSize + GAP) + cellSize / 2;
@@ -164,6 +216,18 @@ export function highlightChosenStart(grid, col) {
 export function clearChosenStart(grid) {
   grid.querySelectorAll('.cell.shore.start-pick.chosen').forEach(el => {
     el.classList.remove('chosen');
+  });
+}
+
+export function highlightHintStarts(grid, cols) {
+  grid.querySelectorAll('.cell.shore.start-pick').forEach(el => {
+    el.classList.toggle('hint', cols.includes(Number(el.dataset.col)));
+  });
+}
+
+export function clearHintStarts(grid) {
+  grid.querySelectorAll('.cell.shore.start-pick.hint').forEach(el => {
+    el.classList.remove('hint');
   });
 }
 

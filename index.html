@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#0b3d6b" />
   <title>Corabia Piratului</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <div id="app">
@@ -58,6 +58,7 @@
       <header class="game-header">
         <button id="btn-back-from-game" class="icon-btn" aria-label="Înapoi">⬅️</button>
         <span id="game-title" class="game-title"></span>
+        <button id="btn-hint" class="icon-btn hidden" aria-label="Indiciu">💡</button>
         <button id="btn-retry" class="icon-btn" aria-label="Reîncearcă">🔄</button>
       </header>
 
@@ -118,14 +119,33 @@
       </div>
 
       <div id="editor-toolbar" class="editor-toolbar">
-        <button class="tool-btn" data-tool=">"><span class="tool-glyph">▶</span></button>
-        <button class="tool-btn" data-tool="<"><span class="tool-glyph">◀</span></button>
-        <button class="tool-btn" data-tool="="><span class="tool-glyph">·</span></button>
-        <button class="tool-btn" data-tool=">>"><span class="tool-glyph">▶▶</span></button>
-        <button class="tool-btn" data-tool="<<"><span class="tool-glyph">◀◀</span></button>
-        <button class="tool-btn" data-tool=">>>"><span class="tool-glyph">▶▶▶</span></button>
-        <button class="tool-btn" data-tool="<<<"><span class="tool-glyph">◀◀◀</span></button>
-        <button class="tool-btn" data-tool="rock"><span class="tool-glyph">🪨</span></button>
+        <div class="toolbar-row">
+          <button class="tool-btn" data-tool=">"><span class="tool-glyph">▶</span></button>
+          <button class="tool-btn" data-tool="<"><span class="tool-glyph">◀</span></button>
+          <button class="tool-btn" data-tool="="><span class="tool-glyph">·</span></button>
+          <button class="tool-btn" data-tool=">>"><span class="tool-glyph">▶▶</span></button>
+          <button class="tool-btn" data-tool="<<"><span class="tool-glyph">◀◀</span></button>
+          <button class="tool-btn" data-tool=">>>"><span class="tool-glyph">▶▶▶</span></button>
+          <button class="tool-btn" data-tool="<<<"><span class="tool-glyph">◀◀◀</span></button>
+        </div>
+        <div class="toolbar-row">
+          <button class="tool-btn" data-tool="↗"><span class="tool-glyph">↗</span></button>
+          <button class="tool-btn" data-tool="↖"><span class="tool-glyph">↖</span></button>
+          <button class="tool-btn" data-tool="⬆"><span class="tool-glyph">⬆</span></button>
+          <button class="tool-btn" data-tool="↘"><span class="tool-glyph">↘</span></button>
+          <button class="tool-btn" data-tool="↙"><span class="tool-glyph">↙</span></button>
+          <button class="tool-btn" data-tool="⬇"><span class="tool-glyph">⬇</span></button>
+          <button class="tool-btn" data-tool="rock"><span class="tool-glyph">🪨</span></button>
+          <button class="tool-btn" data-tool="buoy"><span class="tool-glyph">🪵</span></button>
+        </div>
+        <div class="toolbar-row">
+          <button class="tool-btn" data-tool="coin"><span class="tool-glyph">💰</span></button>
+          <button class="tool-btn" data-tool="checkpoint"><span class="tool-glyph">⭐</span></button>
+          <button class="tool-btn whirl-tool whirl-A" data-tool="whirl-A"><span class="tool-glyph">🌀</span></button>
+          <button class="tool-btn whirl-tool whirl-B" data-tool="whirl-B"><span class="tool-glyph">🌀</span></button>
+          <button class="tool-btn whirl-tool whirl-C" data-tool="whirl-C"><span class="tool-glyph">🌀</span></button>
+          <button class="tool-btn whirl-tool whirl-D" data-tool="whirl-D"><span class="tool-glyph">🌀</span></button>
+        </div>
       </div>
 
       <div id="editor-stage" class="stage editor-stage"></div>
@@ -138,6 +158,6 @@
 
   </div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=6"></script>
 </body>
 </html>

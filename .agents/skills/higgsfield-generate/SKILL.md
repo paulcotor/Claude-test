@@ -68,9 +68,9 @@ If the user says "analyze this video", "score this ad", "evaluate the hook", or 
 
 1. **Pick a model.** Start with the core defaults unless the brief clearly needs a specialist:
 
-   - **GPT Image 2** → default image model for high-fidelity general generation, graphic design, UI, banners, typography, and on-image text.
+   - **Nano Banana 2** → default image model. Stylized, character, cartoon, reference-driven, and general-purpose image generation. CLI exposes only `nano_banana_2`; "Pro" tier maps to the same job_set_type.
    - **Seedance 2.0** → default video model for serious motion, cinematic clips, multi-shot work, image-to-video, and 4–15s production-quality output. 12s is valid.
-   - **Nano Banana 2/Pro** → default for character, cartoon, stylized, and reference-driven image work; use Pro for harder briefs.
+   - **GPT Image 2** → specialist for graphic design, UI, banners, typography, and on-image text — anything with rendered text or precise graphic layout.
    - **Marketing Studio** → default for ads, UGC, product demos, unboxing, TV spots, presenter videos, and brand/product workflows.
 
    **Image:**
@@ -85,7 +85,7 @@ If the user says "analyze this video", "score this ad", "evaluate the hook", or 
    - Soul Character (reference id from `higgsfield-soul-id`) → Soul 2.0 for stills, Soul Cinema for cinematic
    - Character or cartoon-style work → Nano Banana 2; step up to Nano Banana Pro on hard cases
    - Fast and cheap iteration → Z Image
-   - **Default for everything else → GPT Image 2.** Graphic design, UI, banners, typography, and high-fidelity general generation.
+   - **Default for everything else → Nano Banana 2 (`nano_banana_2`).** Use GPT Image 2 instead only when the prompt requires rendered text or precise graphic-design layout.
 
    **Video:**
    - All advertising / commercial / branded ad video → Marketing Studio (see Marketing Studio below)
